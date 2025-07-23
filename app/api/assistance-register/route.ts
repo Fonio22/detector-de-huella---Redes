@@ -5,7 +5,7 @@ import pool from "@/config/mysql";
 export async function POST(request: NextRequest) {
   try {
     // 1. Parsear JSON del body
-    const { groupId, memberId, assistanceDate, date } = await request.json();
+    const { groupId, memberId, assistanceDate } = await request.json();
 
     // 2. Validaciones básicas
     if (
@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
     const [result]: [ResultSetHeader, any] = await pool.execute(
       `INSERT INTO \`assistance\`
          (group_id, member_id, assistance_date, created_at)
-       VALUES (?, ?, ?, ?);`,
-      [groupId, memberId, assistanceDate, date]
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP);`,
+      [groupId, memberId, assistanceDate]
     );
     if (result.affectedRows !== 1) {
       return NextResponse.json(
