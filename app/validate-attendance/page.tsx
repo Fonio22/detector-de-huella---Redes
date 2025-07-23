@@ -97,6 +97,8 @@ export default function ValidateAttendance() {
 
   const selectedGroupData = groups.find((g) => g.id === selectedGroup);
 
+  console.log("date:", date);
+
   // console.log("photoData:", photoData);
   // console.log("photoError:", photoError);
 
