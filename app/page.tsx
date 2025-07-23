@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Users,
   UserCheck,
@@ -41,13 +41,13 @@ import { Input } from "@/components/ui/input";
 import { useSocket } from "@/hooks/useSocket";
 
 // Datos de ejemplo
-const dashboardStats = {
-  totalStudents: 156,
-  totalGroups: 8,
-  studentsToday: 89,
-  attendanceRate: 85,
-};
-
+interface GroupAttendance {
+  id: number;
+  name: string;
+  description: string;
+  totalStudents: number;
+  presentCount: number;
+}
 const attendanceData = [
   { day: "Lun", students: 78 },
   { day: "Mar", students: 85 },
@@ -65,47 +65,84 @@ const groupsData = [
   { name: "Historia D", students: 30, present: 25, color: "#ff7300" },
 ];
 
-const recentStudents = [
-  {
-    id: 1,
-    name: "Ana García",
-    cedula: "12345678",
-    time: "08:15",
-    status: "present",
-  },
-  {
-    id: 2,
-    name: "Carlos López",
-    cedula: "87654321",
-    time: "08:18",
-    status: "present",
-  },
-  {
-    id: 3,
-    name: "María Rodríguez",
-    cedula: "11223344",
-    time: "08:22",
-    status: "present",
-  },
-  {
-    id: 4,
-    name: "José Martínez",
-    cedula: "44332211",
-    time: "08:25",
-    status: "present",
-  },
-  {
-    id: 5,
-    name: "Laura Fernández",
-    cedula: "55667788",
-    time: "08:30",
-    status: "present",
-  },
-];
+type dashboardStatsType = {
+  totalStudents: number;
+  totalGroups: number;
+  totalRegisteredStudents: number;
+  attendanceByDay: { day: string; count: number }[];
+};
 
 export default function Dashboard() {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const { socketConnected, resetCounter, resetMessage } = useSocket();
+  const [date, setDate] = useState<Date>(new Date());
+  const [dashboardStats, setDashboardStats] =
+    useState<dashboardStatsType | null>(null);
+  const [groupsAttendance, setGroupsAttendance] = useState<GroupAttendance[]>(
+    []
+  );
+
+  useEffect(() => {
+    getDashboardStats();
+    getGroupsAttendance();
+  }, []);
+
+  useEffect(() => {
+    getGroupsAttendance();
+  }, [date]);
+
+  const getDashboardStats = async () => {
+    try {
+      const response = await fetch("/api/dashboard");
+      const data = await response.json();
+
+      // 1. Mapeo de días completos a abreviaturas
+      const dayAbbr: Record<string, string> = {
+        Lunes: "Lun",
+        Martes: "Mar",
+        Miércoles: "Mié",
+        Jueves: "Jue",
+        Viernes: "Vie",
+        Sábado: "Sáb",
+        Domingo: "Dom",
+      };
+
+      // 2. Genero el arreglo attendanceData
+      const attendanceData = Object.entries(dayAbbr).map(([fullDay, abbr]) => ({
+        day: abbr,
+        count:
+          data.attendanceByDay.find(
+            (x: { day: string; count: number }) => x.day === fullDay
+          )?.count ?? 0,
+      }));
+
+      // 3. Lo guardo en tu estado (o donde necesites)
+      setDashboardStats({
+        ...data,
+        attendanceData, // ahora tendrás tu array con { day: "Lun", students: 0|n }
+      });
+
+      console.log(attendanceData);
+    } catch (error) {
+      console.log("Error fetching dashboard stats:", error);
+    }
+  };
+
+  const getGroupsAttendance = async () => {
+    try {
+      const response = await fetch(
+        `/api/groups-attendance?date=${date.toISOString().split("T")[0]}`
+      );
+      const data = await response.json();
+      if (data.isOK) {
+        setGroupsAttendance(data.groups);
+      } else {
+        console.error(data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching groups attendance:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
@@ -155,9 +192,14 @@ export default function Dashboard() {
               <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-lg sm:text-2xl font-bold">
-                {dashboardStats.totalStudents}
-              </div>
+              {dashboardStats ? (
+                <div className="text-lg sm:text-2xl font-bold">
+                  {dashboardStats?.totalStudents}
+                </div>
+              ) : (
+                <div className="text-lg sm:text-2xl font-bold">Cargando...</div>
+              )}
+
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Registrados en el sistema
               </p>
@@ -173,7 +215,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
               <div className="text-lg sm:text-2xl font-bold">
-                {dashboardStats.totalGroups}
+                {dashboardStats?.totalGroups}
               </div>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Clases programadas
@@ -190,14 +232,16 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
               <div className="text-lg sm:text-2xl font-bold">
-                {dashboardStats.studentsToday}
+                {dashboardStats?.totalRegisteredStudents}
               </div>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {Math.round(
-                  (dashboardStats.studentsToday /
-                    dashboardStats.totalStudents) *
-                    100
-                )}
+                {dashboardStats
+                  ? Math.round(
+                      (dashboardStats.totalRegisteredStudents /
+                        dashboardStats.totalStudents) *
+                        100
+                    )
+                  : 0}
                 % asistencia
               </p>
             </CardContent>
@@ -255,14 +299,15 @@ export default function Dashboard() {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={attendanceData}
+                    data={dashboardStats ? dashboardStats.attendanceByDay : []}
                     margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                   >
-                    <XAxis dataKey="day" fontSize={12} />
-                    <YAxis fontSize={12} />
+                    <XAxis dataKey="day" />
+                    <YAxis allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar
-                      dataKey="students"
+                      dataKey="count"
+                      name="Estudiantes"
                       fill="var(--color-students)"
                       radius={[4, 4, 0, 0]}
                     />
@@ -294,47 +339,62 @@ export default function Dashboard() {
                 <Input
                   id="date-select"
                   type="date"
-                  defaultValue={new Date().toISOString().split("T")[0]}
-                  className="w-auto text-sm"
+                  defaultValue={date.toISOString().split("T")[0]}
+                  onChange={(e) => setDate(new Date(e.target.value))}
+                  className="w-auto"
                 />
+                <Button
+                  variant="outline"
+                  className="h-8 text-xs sm:text-sm"
+                  onClick={() => {}}
+                >
+                  Descargar Asistencia
+                </Button>
               </div>
 
               {/* Lista de Grupos */}
-              {groupsData.map((group, index) => (
-                <Link
-                  key={index}
-                  href={`/group-summary/${group.name
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      <div
-                        className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: group.color }}
-                      ></div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-medium text-sm sm:text-base truncate">
-                          {group.name}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          {group.present}/{group.students} presentes
-                        </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {groupsAttendance.map((group, index) => (
+                  <Link
+                    key={index}
+                    href={`/group-summary/${group.id}?date=${
+                      date.toISOString().split("T")[0]
+                    }`}
+                  >
+                    <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0">
+                          <div
+                            className="w-full h-full rounded-full"
+                            style={{ backgroundColor: "green" }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-sm sm:text-base truncate">
+                            {group.name}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {group.presentCount}/{group.totalStudents} presentes
+                          </p>
+                        </div>
                       </div>
+                      <Badge
+                        variant={
+                          group.presentCount / group.totalStudents > 0.8
+                            ? "default"
+                            : "secondary"
+                        }
+                        className="text-xs flex-shrink-0"
+                      >
+                        {Math.round(
+                          (group.presentCount / group.totalStudents) * 100
+                        )}
+                        %
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={
-                        group.present / group.students > 0.8
-                          ? "default"
-                          : "secondary"
-                      }
-                      className="text-xs flex-shrink-0"
-                    >
-                      {Math.round((group.present / group.students) * 100)}%
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
