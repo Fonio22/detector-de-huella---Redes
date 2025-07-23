@@ -343,13 +343,6 @@ export default function Dashboard() {
                   onChange={(e) => setDate(new Date(e.target.value))}
                   className="w-auto"
                 />
-                <Button
-                  variant="outline"
-                  className="h-8 text-xs sm:text-sm"
-                  onClick={() => {}}
-                >
-                  Descargar Asistencia
-                </Button>
               </div>
 
               {/* Lista de Grupos */}

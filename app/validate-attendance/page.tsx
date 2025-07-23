@@ -132,6 +132,37 @@ export default function ValidateAttendance() {
     }
   }, [photoData, photoError]);
 
+  useEffect(() => {
+    getPresentStudents();
+  }, [date, selectedGroup]);
+
+  const getPresentStudents = async () => {
+    try {
+      const res = await fetch(
+        `/api/by-group-id?groupId=${selectedGroup}&date=${format(
+          date,
+          "yyyy-MM-dd"
+        )}`
+      );
+      if (!res.ok) throw new Error("Error al obtener estudiantes presentes");
+
+      const data = await res.json();
+
+      if (data.isOK) {
+        console.log("Estudiantes presentes:", data);
+
+        const asistieron = data.allStudents.filter(
+          (persona: any) => persona.present
+        );
+        setAttendanceRecords(asistieron);
+      } else {
+        console.error("Error al obtener estudiantes presentes:", data.message);
+      }
+    } catch (error) {
+      console.log("Error al obtener estudiantes presentes:", error);
+    }
+  };
+
   const getAllGroups = async () => {
     try {
       const res = await fetch(

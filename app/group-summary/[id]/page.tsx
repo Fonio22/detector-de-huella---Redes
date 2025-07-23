@@ -52,6 +52,7 @@ export default function GroupSummary() {
     null
   );
   const [lastUpdate, setLastUpdate] = useState<null | Date>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getGroupById(params.id);
@@ -73,6 +74,29 @@ export default function GroupSummary() {
     } catch (error) {
       console.error("Error fetching group data:", error);
       return null;
+    }
+  };
+
+  const descargarExcel = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/api/export-excel-date-id?groupId=${params.id}&date=${selectedDate}`
+      );
+      if (!response.ok) {
+        throw new Error("Error downloading Excel");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `asistencia_g${params.id}_${selectedDate}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setLoading(false);
+    } catch (error) {
+      console.log("Error downloading Excel:", error);
     }
   };
 
@@ -323,8 +347,16 @@ export default function GroupSummary() {
                   Iniciar Validación
                 </Button>
               </Link>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
+              <Button
+                variant="outline"
+                onClick={descargarExcel}
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-blue-600" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
                 Descargar Asistencia
               </Button>
             </div>

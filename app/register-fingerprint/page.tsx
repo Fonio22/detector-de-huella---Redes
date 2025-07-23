@@ -375,6 +375,7 @@ export default function RegisterFingerprint() {
                       <Button
                         variant="outline"
                         className="flex-1 bg-transparent"
+                        onClick={() => router.push("/dashboard")}
                       >
                         Volver al Dashboard
                       </Button>
@@ -455,8 +456,7 @@ export default function RegisterFingerprint() {
                     } rounded-full`}
                   ></div>
                   <span>
-                    Aparrato (No se como llamar):{" "}
-                    {socketConnected ? "Conectado" : "Desconectado"}
+                    Sistema: {socketConnected ? "Conectado" : "Desconectado"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
